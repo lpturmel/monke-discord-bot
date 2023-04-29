@@ -1,10 +1,9 @@
-use std::fmt::Display;
-
 use crate::discord::{DiscordPayload, DiscordResponse, InteractionResponse, ResponseType};
 use crate::error::Result;
-use crate::riot::league::{Client, Queue};
 use crate::riot::matches::Region as MatchesRegion;
 use crate::riot::summoner::Region as SummonerRegion;
+use crate::riot::{Client, Queue};
+use std::fmt::Display;
 
 #[derive(Debug)]
 pub enum WinRateError {

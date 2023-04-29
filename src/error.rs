@@ -26,7 +26,7 @@ pub enum Error {
     BadCommand,
     HttpError(reqwest::Error),
     WinrateCommandError(WinRateError),
-    RiotApiError(riot::league::Error),
+    RiotApiError(riot::Error),
 }
 
 impl std::error::Error for Error {
@@ -38,8 +38,8 @@ impl std::error::Error for Error {
     }
 }
 
-impl From<riot::league::Error> for Error {
-    fn from(e: riot::league::Error) -> Self {
+impl From<riot::Error> for Error {
+    fn from(e: riot::Error) -> Self {
         Error::RiotApiError(e)
     }
 }

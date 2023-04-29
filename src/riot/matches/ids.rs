@@ -1,6 +1,6 @@
 use crate::error::Result;
-use crate::riot::league::Error;
-use crate::riot::league::{GameType, Handle, Queue};
+use crate::riot::Error;
+use crate::riot::{GameType, Handle, Queue};
 use std::str::FromStr;
 
 pub struct IdsRequestBuilder {

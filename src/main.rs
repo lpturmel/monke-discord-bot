@@ -59,7 +59,7 @@ async fn function_handler(event: Request) -> Result<DiscordResponse, AppError> {
             let command = Command::from_str(&int_data.id).ok_or(AppError::BadCommand)?;
 
             let key = std::env::var("RIOT_API_KEY").expect("RIOT_API_KEY not set");
-            let riot_client = riot::league::Client::new(&key);
+            let riot_client = riot::Client::new(&key);
             match command {
                 Command::Winrate => commands::winrate::run(&body, &riot_client).await?,
             }

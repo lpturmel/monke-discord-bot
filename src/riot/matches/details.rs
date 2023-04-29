@@ -1,6 +1,6 @@
 use crate::error::Result;
-use crate::riot::league::Error;
-use crate::riot::league::Handle;
+use crate::riot::Error;
+use crate::riot::Handle;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 

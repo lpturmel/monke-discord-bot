@@ -1,8 +1,7 @@
 use crate::error::Result;
-use crate::riot::league::Error;
+use crate::riot::{Error, Handle};
 use serde::{Deserialize, Serialize};
 
-use crate::riot::league::Handle;
 use std::str::FromStr;
 
 pub struct GetByNameRequestBuilder {

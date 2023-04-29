@@ -1,5 +1,5 @@
 use self::ids::IdsRequestBuilder;
-use super::league::Handle;
+use crate::riot::Handle;
 use std::fmt::Display;
 
 pub mod details;

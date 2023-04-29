@@ -1,6 +1,7 @@
 use self::name::GetByNameRequestBuilder;
-use super::league::Handle;
 use std::fmt::Display;
+
+use super::Handle;
 
 pub mod name;
 
