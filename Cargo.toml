@@ -1,0 +1,29 @@
+[package]
+name = "monke-bot"
+version = "0.1.0"
+edition = "2021"
+
+# Starting in Rust 1.62 you can use `cargo add` to add dependencies 
+# to your project.
+#
+# If you're using an older Rust version,
+# download cargo-edit(https://github.com/killercup/cargo-edit#installation) 
+# to install the `add` subcommand.
+#
+# Running `cargo add DEPENDENCY_NAME` will
+# add the latest version of a dependency to the list,
+# and it will keep the alphabetic ordering for you.
+
+[dependencies]
+ed25519-dalek = "1.0.1"
+futures = "0.3.28"
+hex = "0.4.3"
+lambda_http = "0.8.0"
+lambda_runtime = "0.8.0"
+openssl = { version = "0.10.52", features = ["vendored"] }
+reqwest = { version = "0.11.17", features = ["json"] }
+serde = { version = "1.0.160", features = ["derive"] }
+serde_json = "1.0.96"
+tokio = { version = "1", features = ["macros"] }
+tracing = { version = "0.1", features = ["log"] }
+tracing-subscriber = { version = "0.3", default-features = false, features = ["fmt", "ansi"] }
