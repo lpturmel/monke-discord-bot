@@ -9,4 +9,4 @@ The project is hosted on AWS Lambda behind API Gateway and the definition is ins
 
 ## Why Rust?
 
-Rust results in extremely low cold starts & memory usage and keeps the Lambda costs low
+Rust results in extremely low cold starts & memory usage and keeps the Lambda costs minimal

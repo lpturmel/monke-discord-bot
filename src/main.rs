@@ -1,30 +1,34 @@
+use self::discord::{
+    verify_sig, DiscordPayload, DiscordResponse, InteractionResponse, ResponseType,
+};
+use self::error::Error as AppError;
+use crate::discord::Command;
+use aws_sdk_dynamodb::Client as DynamoClient;
 use lambda_http::{run, service_fn, Body, IntoResponse, Request, Response};
 use lambda_runtime::Error;
 use std::future::Future;
 use std::pin::Pin;
 
-use crate::discord::Command;
-
-use self::discord::{
-    verify_sig, DiscordPayload, DiscordResponse, InteractionResponse, ResponseType,
-};
-use self::error::Error as AppError;
-
 pub mod commands;
+pub mod db;
 pub mod discord;
 pub mod error;
 pub mod riot;
 
 pub type ResponseFuture = Pin<Box<dyn Future<Output = Response<Body>> + Send>>;
 
-async fn wrapper_fn(event: Request) -> Result<Response<Body>, Error> {
-    let res = function_handler(event).await;
+pub struct AppState {
+    riot_client: riot::Client,
+    db_client: DynamoClient,
+}
+async fn wrapper_fn(event: Request, state: &AppState) -> Result<Response<Body>, Error> {
+    let res = function_handler(event, state).await;
     match res {
         Ok(res) => Ok(res.into_response().await),
         Err(err) => Ok(err.into_response().await),
     }
 }
-async fn function_handler(event: Request) -> Result<DiscordResponse, AppError> {
+async fn function_handler(event: Request, state: &AppState) -> Result<DiscordResponse, AppError> {
     let signature = event
         .headers()
         .get("x-signature-ed25519")
@@ -58,10 +62,8 @@ async fn function_handler(event: Request) -> Result<DiscordResponse, AppError> {
             let int_data = &body.data.as_ref().ok_or(AppError::BadCommand)?;
             let command = Command::from_str(&int_data.id).ok_or(AppError::BadCommand)?;
 
-            let key = std::env::var("RIOT_API_KEY").expect("RIOT_API_KEY not set");
-            let riot_client = riot::Client::new(&key);
             match command {
-                Command::Winrate => commands::winrate::run(&body, &riot_client).await?,
+                Command::Winrate => commands::winrate::run(&body, state).await?,
             }
         }
         _ => InteractionResponse::new(ResponseType::Pong, "Bad request type"),
@@ -81,5 +83,19 @@ async fn main() -> Result<(), Error> {
         .without_time()
         .init();
 
-    run(service_fn(wrapper_fn)).await
+    let config = aws_config::load_from_env().await;
+    let client = DynamoClient::new(&config);
+
+    let state = AppState {
+        riot_client: riot::Client::new(
+            &std::env::var("RIOT_API_KEY").expect("RIOT_API_KEY not set"),
+        ),
+        db_client: client,
+    };
+
+    run(service_fn(|event: Request| async {
+        wrapper_fn(event, &state).await
+    }))
+    .await
+    // run(service_fn(wrapper_fn)).await
 }

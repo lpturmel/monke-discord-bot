@@ -26,6 +26,8 @@ impl DetailsRequestBuilder {
             reqwest::StatusCode::TOO_MANY_REQUESTS => return Err(Error::TooManyRequests)?,
             reqwest::StatusCode::UNAUTHORIZED => return Err(Error::Unauthorized)?,
             reqwest::StatusCode::FORBIDDEN => return Err(Error::Forbidden)?,
+            reqwest::StatusCode::BAD_REQUEST => return Err(Error::BadRequest)?,
+            reqwest::StatusCode::INTERNAL_SERVER_ERROR => return Err(Error::RiotError)?,
             _ => {}
         }
         let match_ids: MatchDetails = res.json().await?;
@@ -73,7 +75,6 @@ pub struct Participant {
     pub assists: i64,
     pub champion_id: i64,
     pub champion_name: String,
-    pub command_pings: i64,
     pub deaths: i64,
     pub double_kills: i64,
     pub summoner_name: String,

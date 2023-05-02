@@ -1,6 +1,7 @@
 use std::fmt::Display;
 use std::string::FromUtf8Error;
 
+use aws_smithy_http::result::CreateUnhandledError;
 use ed25519_dalek::SignatureError;
 use hex::FromHexError;
 use lambda_http::{
@@ -27,6 +28,8 @@ pub enum Error {
     HttpError(reqwest::Error),
     WinrateCommandError(WinRateError),
     RiotApiError(riot::Error),
+    AwsSdk(String),
+    Validation(String),
 }
 
 impl std::error::Error for Error {
@@ -37,7 +40,19 @@ impl std::error::Error for Error {
         }
     }
 }
-
+impl<T: std::error::Error + 'static + Send + Sync + CreateUnhandledError>
+    From<aws_sdk_dynamodb::error::SdkError<T>> for Error
+{
+    fn from(err: aws_sdk_dynamodb::error::SdkError<T>) -> Self {
+        let msg = format!("{:?}", err);
+        Self::AwsSdk(msg)
+    }
+}
+impl From<serde_dynamo::Error> for Error {
+    fn from(err: serde_dynamo::Error) -> Self {
+        Self::Validation(err.to_string())
+    }
+}
 impl From<riot::Error> for Error {
     fn from(e: riot::Error) -> Self {
         Error::RiotApiError(e)
@@ -69,9 +84,14 @@ impl Display for Error {
             Error::BadBody => "Bad body",
             Error::SerializeError(e) => return e.fmt(f),
             Error::BadCommand => "Bad command",
+            Error::Validation(e) => return e.fmt(f),
             Error::HttpError(e) => return e.fmt(f),
             Error::RiotApiError(e) => return e.fmt(f),
             Error::WinrateCommandError(e) => return e.fmt(f),
+            Error::AwsSdk(e) => {
+                println!("AwsSdk error: {}", e);
+                "Aws sdk error"
+            }
         };
         write!(f, "{}", msg)
     }
@@ -87,6 +107,8 @@ impl IntoResponse for Error {
             Error::SerializeError(_) => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
             Error::HttpError(_) => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
             Error::BadCommand => (StatusCode::BAD_REQUEST, self.to_string()),
+            Error::AwsSdk(_) => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
+            Error::Validation(_) => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
             Error::RiotApiError(e) => (
                 StatusCode::OK,
                 serde_json::to_string(&InteractionResponse::new(

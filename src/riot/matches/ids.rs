@@ -78,6 +78,8 @@ impl IdsRequestBuilder {
             reqwest::StatusCode::TOO_MANY_REQUESTS => return Err(Error::TooManyRequests)?,
             reqwest::StatusCode::UNAUTHORIZED => return Err(Error::Unauthorized)?,
             reqwest::StatusCode::FORBIDDEN => return Err(Error::Forbidden)?,
+            reqwest::StatusCode::BAD_REQUEST => return Err(Error::BadRequest)?,
+            reqwest::StatusCode::INTERNAL_SERVER_ERROR => return Err(Error::RiotError)?,
             _ => {}
         }
         let match_ids: Vec<String> = res.json().await?;
