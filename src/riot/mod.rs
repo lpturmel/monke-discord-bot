@@ -221,6 +221,7 @@ mod tests {
             .unwrap();
         let queue_type = Queue::RankedSolo5x5;
 
+        println!("Summoner: {:?}", summoner);
         let game_ids = client
             .matches(MatchRegion::AMERICAS)
             .get_ids(&summoner.puuid)
@@ -229,6 +230,7 @@ mod tests {
             .send()
             .await
             .unwrap();
+        println!("Game ids: {:?}", game_ids);
         let game_ids_count = game_ids.len();
 
         let table_name = env::var("TABLE_NAME").expect("TABLE_NAME env var not set");
@@ -269,7 +271,6 @@ mod tests {
                 },
             )
             .collect::<Vec<_>>();
-        println!("missing game ids: {:?}", missing_game_ids);
 
         let game_details_fut = missing_game_ids
             .iter()
@@ -281,7 +282,6 @@ mod tests {
             })
             .collect::<Vec<_>>();
 
-        println!("fetching {} game details from api", game_details_fut.len());
         let game_details_res = futures::future::join_all(game_details_fut).await;
         let game_details_res = game_details_res
             .iter()

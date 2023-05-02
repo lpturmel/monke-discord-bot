@@ -76,6 +76,7 @@ pub struct Participant {
     pub champion_id: i64,
     pub champion_name: String,
     pub deaths: i64,
+    pub kills: i64,
     pub double_kills: i64,
     pub summoner_name: String,
     pub summoner_id: String,

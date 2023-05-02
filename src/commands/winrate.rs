@@ -11,6 +11,9 @@ use std::collections::HashMap;
 use std::env;
 use std::fmt::Display;
 
+const WIN: &'static str = "✅";
+const LOSS: &'static str = "❌";
+
 #[derive(Debug)]
 pub enum WinRateError {
     SummonerNotFound,
@@ -20,6 +23,7 @@ pub enum WinRateError {
     MissingOptionValue,
     GetItemNoTableResults,
     GetItemNoResults,
+    SummonerNotPartOfGame,
 }
 
 impl Display for WinRateError {
@@ -32,6 +36,7 @@ impl Display for WinRateError {
             WinRateError::MissingOptionValue => "Missing option value (from discord)",
             WinRateError::GetItemNoTableResults => "No table results from dynamodb",
             WinRateError::GetItemNoResults => "No results from dynamodb",
+            WinRateError::SummonerNotPartOfGame => "Summoner not found in game participants",
         };
         write!(f, "{}", msg)
     }
@@ -156,28 +161,52 @@ pub async fn run(body: &DiscordPayload, state: &AppState) -> Result<DiscordRespo
             .collect::<Vec<GameItem>>(),
     );
 
+    game_details.sort_by(|a, b| b.info.game_creation.cmp(&a.info.game_creation));
+
     let game_count = game_details.len();
 
-    let won_games = game_details
-        .iter()
-        .filter(|game| {
-            game.info
-                .participants
-                .iter()
-                .find(|p| p.summoner_id == summoner_data.id)
-                .unwrap()
-                .win
-        })
-        .count();
+    let user_games = game_details.iter().map(|game| {
+        game.info
+            .participants
+            .iter()
+            .find(|p| p.summoner_id == summoner_data.id)
+            .ok_or(WinRateError::SummonerNotPartOfGame)
+    });
+    let user_games = user_games.collect::<std::result::Result<Vec<_>, WinRateError>>()?;
+
+    let won_games = user_games.iter().filter(|p| p.win).count();
 
     let winrate = won_games as f32 / game_count as f32 * 100.0;
+
+    let game_lines = user_games.iter().map(|p| {
+        let win_str = if p.win { WIN } else { LOSS };
+        let kda_num = get_numeric_kda(p.kills, p.deaths, p.assists);
+        let kda_str = if kda_num == -1.0 {
+            "Perfect".to_string()
+        } else {
+            format!("{:.2}", kda_num)
+        };
+        let kda = format!("{}/{}/{} **{}** KDA", p.kills, p.deaths, p.assists, kda_str);
+        format!("\n{} - {} {}\n", win_str, p.champion_name, kda)
+    });
 
     let res = InteractionResponse::new(
         ResponseType::ChannelMessageWithSource,
         format!(
-            "**{}** [{}]: {:.2}% in last {} games",
-            summoner_data.name, queue_type_str, winrate, game_count
+            "**{}** [{}]: {:.2}% in last {} games\n\n{}",
+            summoner_data.name,
+            queue_type_str,
+            winrate,
+            game_count,
+            game_lines.collect::<String>()
         ),
     );
     Ok(res)
+}
+
+fn get_numeric_kda(kills: i64, deaths: i64, assists: i64) -> f32 {
+    if deaths == 0 {
+        return -1.0;
+    }
+    (kills + assists) as f32 / deaths as f32
 }
