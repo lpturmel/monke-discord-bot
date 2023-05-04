@@ -51,7 +51,7 @@ impl IdsRequestBuilder {
     pub async fn send(mut self) -> Result<Vec<String>> {
         let count = self.count.unwrap_or(20);
         let queue = self.queue.unwrap_or(Queue::RankedSolo5x5);
-        let game_type: GameType = queue.clone().into();
+        let game_type: GameType = (&queue).into();
 
         let queue: i64 = queue.into();
 

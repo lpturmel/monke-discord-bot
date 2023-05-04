@@ -55,6 +55,14 @@ impl Into<i64> for Queue {
         }
     }
 }
+impl From<&Queue> for GameType {
+    fn from(queue: &Queue) -> Self {
+        match queue {
+            Queue::RankedSolo5x5 => GameType::Ranked,
+            Queue::RankedFlex5x5 => GameType::Ranked,
+        }
+    }
+}
 
 impl From<Queue> for GameType {
     fn from(queue: Queue) -> Self {
@@ -127,9 +135,18 @@ mod tests {
     };
     use serde_dynamo::aws_sdk_dynamodb_0_25::{from_items, to_item};
 
+    use crate::commands::winrate::print_game_line;
     use crate::db::GameItem;
 
     use super::*;
+    #[test]
+    fn test_print_game_line() {
+        let first_line = print_game_line("Vladimir", 12, 0, 5, true);
+        let second_line = print_game_line("Nami", 1, 1, 28, true);
+
+        println!("{}", first_line);
+        println!("{}", second_line);
+    }
     #[test]
     fn test_queue_into() {
         let queue: i64 = Queue::RankedSolo5x5.into();
@@ -238,7 +255,7 @@ mod tests {
             .iter()
             .map(|game_id| {
                 let mut key = HashMap::new();
-                key.insert("id".to_string(), AttributeValue::S(game_id.clone()));
+                key.insert("id".to_string(), AttributeValue::S(game_id.to_string()));
                 key.insert("sk".to_string(), AttributeValue::S("#".to_string()));
                 key
             })

@@ -77,7 +77,7 @@ pub async fn run(body: &DiscordPayload, state: &AppState) -> Result<DiscordRespo
         .iter()
         .map(|game_id| {
             let mut key = HashMap::new();
-            key.insert("id".to_string(), AttributeValue::S(game_id.clone()));
+            key.insert("id".to_string(), AttributeValue::S(game_id.to_string()));
             key.insert("sk".to_string(), AttributeValue::S("#".to_string()));
             key
         })
@@ -98,6 +98,7 @@ pub async fn run(body: &DiscordPayload, state: &AppState) -> Result<DiscordRespo
     let items = table_res
         .get(&table_name)
         .ok_or(WinRateError::GetItemNoResults)?;
+
     let items: Vec<GameItem> = from_items(items.clone())?;
 
     let mut game_details: Vec<GameItem> = Vec::new();
@@ -156,9 +157,8 @@ pub async fn run(body: &DiscordPayload, state: &AppState) -> Result<DiscordRespo
 
     game_details.extend(
         game_details_res
-            .iter()
-            .map(|game| (*game).clone().into())
-            .collect::<Vec<GameItem>>(),
+            .into_iter()
+            .map(|m| GameItem::from_match_details(m)),
     );
 
     game_details.sort_by(|a, b| b.info.game_creation.cmp(&a.info.game_creation));
@@ -178,17 +178,9 @@ pub async fn run(body: &DiscordPayload, state: &AppState) -> Result<DiscordRespo
 
     let winrate = won_games as f32 / game_count as f32 * 100.0;
 
-    let game_lines = user_games.iter().map(|p| {
-        let win_str = if p.win { WIN } else { LOSS };
-        let kda_num = get_numeric_kda(p.kills, p.deaths, p.assists);
-        let kda_str = if kda_num == -1.0 {
-            "Perfect".to_string()
-        } else {
-            format!("{:.2}", kda_num)
-        };
-        let kda = format!("{}/{}/{} **{}** KDA", p.kills, p.deaths, p.assists, kda_str);
-        format!("\n{} - {} {}\n", win_str, p.champion_name, kda)
-    });
+    let game_lines = user_games
+        .iter()
+        .map(|p| print_game_line(&p.champion_name, p.kills, p.deaths, p.assists, p.win));
 
     let res = InteractionResponse::new(
         ResponseType::ChannelMessageWithSource,
@@ -204,9 +196,29 @@ pub async fn run(body: &DiscordPayload, state: &AppState) -> Result<DiscordRespo
     Ok(res)
 }
 
+pub fn print_game_line(
+    champion_name: &str,
+    kills: i64,
+    deaths: i64,
+    assists: i64,
+    win: bool,
+) -> String {
+    let win_str = if win { WIN } else { LOSS };
+    let kda_num = get_numeric_kda(kills, deaths, assists);
+    let kda_str = match kda_num {
+        x if x == f32::INFINITY => "Perfect".to_string(),
+        _ => format!("{:.2}", kda_num),
+    };
+    format!(
+        "\n{} - {} {}/{}/{} **{}** KDA\n",
+        win_str, champion_name, kills, deaths, assists, kda_str
+    )
+}
+
 fn get_numeric_kda(kills: i64, deaths: i64, assists: i64) -> f32 {
     if deaths == 0 {
-        return -1.0;
+        f32::INFINITY
+    } else {
+        (kills + assists) as f32 / deaths as f32
     }
-    (kills + assists) as f32 / deaths as f32
 }

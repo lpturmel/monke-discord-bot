@@ -66,7 +66,6 @@ pub struct Info {
     pub participants: Vec<Participant>,
     pub platform_id: String,
     pub queue_id: i64,
-    pub teams: Vec<Team>,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -81,73 +80,4 @@ pub struct Participant {
     pub summoner_name: String,
     pub summoner_id: String,
     pub win: bool,
-}
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Team {
-    pub bans: Vec<Ban>,
-    pub objectives: Objectives,
-    pub team_id: i64,
-    pub win: bool,
-}
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Ban {
-    pub champion_id: i64,
-    pub pick_turn: i64,
-}
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Objectives {
-    pub baron: Baron,
-    pub champion: Champion,
-    pub dragon: Dragon,
-    pub inhibitor: Inhibitor,
-    pub rift_herald: RiftHerald,
-    pub tower: Tower,
-}
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Baron {
-    pub first: bool,
-    pub kills: i64,
-}
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Champion {
-    pub first: bool,
-    pub kills: i64,
-}
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Dragon {
-    pub first: bool,
-    pub kills: i64,
-}
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Inhibitor {
-    pub first: bool,
-    pub kills: i64,
-}
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RiftHerald {
-    pub first: bool,
-    pub kills: i64,
-}
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Tower {
-    pub first: bool,
-    pub kills: i64,
 }
