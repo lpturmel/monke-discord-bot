@@ -1,6 +1,7 @@
 use crate::db::GameItem;
 use crate::discord::{DiscordPayload, DiscordResponse, InteractionResponse, ResponseType};
 use crate::error::Result;
+use crate::riot::matches::details::Participant;
 use crate::riot::matches::Region as MatchesRegion;
 use crate::riot::summoner::Region as SummonerRegion;
 use crate::riot::Queue;
@@ -178,22 +179,50 @@ pub async fn run(body: &DiscordPayload, state: &AppState) -> Result<DiscordRespo
 
     let winrate = won_games as f32 / game_count as f32 * 100.0;
 
-    let game_lines = user_games
+    let mut game_lines = user_games
         .iter()
-        .map(|p| print_game_line(&p.champion_name, p.kills, p.deaths, p.assists, p.win));
+        .map(|p| print_game_line(&p.champion_name, p.kills, p.deaths, p.assists, p.win))
+        .collect::<String>();
 
+    if summoner_name.to_lowercase() == "xrayzor" {
+        game_lines.push_str(&rayan_kayn_kda_str(&user_games));
+    }
     let res = InteractionResponse::new(
         ResponseType::ChannelMessageWithSource,
         format!(
             "**{}** [{}]: {:.2}% in last {} games\n\n{}",
-            summoner_data.name,
-            queue_type_str,
-            winrate,
-            game_count,
-            game_lines.collect::<String>()
+            summoner_data.name, queue_type_str, winrate, game_count, game_lines
         ),
     );
     Ok(res)
+}
+fn rayan_kayn_kda_str(games: &Vec<&Participant>) -> String {
+    let kayn_games = games
+        .iter()
+        .filter(|p| p.champion_name.to_lowercase() == "kayn")
+        .collect::<Vec<_>>();
+    let won_games = kayn_games.iter().filter(|p| p.win).count();
+
+    let winrate = won_games as f32 / kayn_games.len() as f32 * 100.0;
+
+    let avg_kills = kayn_games.iter().map(|p| p.kills).sum::<i64>() / kayn_games.len() as i64;
+    let avg_deaths = kayn_games.iter().map(|p| p.deaths).sum::<i64>() / kayn_games.len() as i64;
+    let avg_assists = kayn_games.iter().map(|p| p.assists).sum::<i64>() / kayn_games.len() as i64;
+    let average_kda = kayn_games
+        .iter()
+        .map(|p| get_numeric_kda(p.kills, p.deaths, p.assists))
+        .sum::<f32>()
+        / kayn_games.len() as f32;
+
+    format!(
+        "\n---IMPORTANT ---\n\n**Rayan** Kayn: {}% winrate in {} games with {:.2} ({:.2}/{:.2}/{:.2}) KDA",
+        winrate,
+        kayn_games.len(),
+        average_kda,
+        avg_kills,
+        avg_deaths,
+        avg_assists
+    )
 }
 
 pub fn print_game_line(
