@@ -13,6 +13,7 @@ use std::env;
 use std::fmt::Display;
 
 const WIN: &'static str = "✅";
+const REMAKE: &'static str = "🔄";
 const LOSS: &'static str = "❌";
 
 #[derive(Debug)]
@@ -164,8 +165,6 @@ pub async fn run(body: &DiscordPayload, state: &AppState) -> Result<DiscordRespo
 
     game_details.sort_by(|a, b| b.info.game_creation.cmp(&a.info.game_creation));
 
-    let game_count = game_details.len();
-
     let user_games = game_details.iter().map(|game| {
         game.info
             .participants
@@ -174,20 +173,24 @@ pub async fn run(body: &DiscordPayload, state: &AppState) -> Result<DiscordRespo
             .ok_or(WinRateError::SummonerNotPartOfGame)
     });
     let user_games = user_games.collect::<std::result::Result<Vec<_>, WinRateError>>()?;
-
-    let won_games = user_games
+    let user_games_no_remake = user_games
         .iter()
-        .filter(|p| {
-            p.win || (p.game_ended_in_early_surrender.unwrap_or(false) && !p.team_early_surrendered)
-        })
-        .count();
+        .filter(|p| !p.game_ended_in_early_surrender);
+    let user_games_no_remake = user_games_no_remake.collect::<Vec<_>>();
 
-    let winrate = won_games as f32 / game_count as f32 * 100.0;
+    let game_count = user_games_no_remake.len();
+
+    let won_games = user_games_no_remake.iter().filter(|p| p.win).count();
 
     let mut game_lines = user_games
         .iter()
-        .map(|p| print_game_line(&p.champion_name, p.kills, p.deaths, p.assists, p.win))
+        .map(|p| match p.game_ended_in_early_surrender {
+            true => print_game_line(true, &p.champion_name, 0, 0, 0, false),
+            false => print_game_line(false, &p.champion_name, p.kills, p.deaths, p.assists, p.win),
+        })
         .collect::<String>();
+
+    let winrate = won_games as f32 / game_count as f32 * 100.0;
 
     if summoner_name.to_lowercase() == "xrayzor" {
         game_lines.push_str(&rayan_kayn_kda_str(&user_games));
@@ -204,14 +207,10 @@ pub async fn run(body: &DiscordPayload, state: &AppState) -> Result<DiscordRespo
 fn rayan_kayn_kda_str(games: &Vec<&Participant>) -> String {
     let kayn_games = games
         .iter()
+        .filter(|p| !p.game_ended_in_early_surrender)
         .filter(|p| p.champion_name.to_lowercase() == "kayn")
         .collect::<Vec<_>>();
-    let won_games = kayn_games
-        .iter()
-        .filter(|p| {
-            p.win || (p.game_ended_in_early_surrender.unwrap_or(false) && !p.team_early_surrendered)
-        })
-        .count();
+    let won_games = kayn_games.iter().filter(|p| p.win).count();
 
     let winrate = won_games as f32 / kayn_games.len() as f32 * 100.0;
 
@@ -236,13 +235,20 @@ fn rayan_kayn_kda_str(games: &Vec<&Participant>) -> String {
 }
 
 pub fn print_game_line(
+    is_remake: bool,
     champion_name: &str,
     kills: i64,
     deaths: i64,
     assists: i64,
     win: bool,
 ) -> String {
-    let win_str = if win { WIN } else { LOSS };
+    let win_str = if is_remake {
+        REMAKE
+    } else if win {
+        WIN
+    } else {
+        LOSS
+    };
     let kda_num = get_numeric_kda(kills, deaths, assists);
     let kda_str = match kda_num {
         x if x == f32::INFINITY => "Perfect".to_string(),

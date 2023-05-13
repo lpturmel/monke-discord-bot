@@ -141,8 +141,8 @@ mod tests {
     use super::*;
     #[test]
     fn test_print_game_line() {
-        let first_line = print_game_line("Vladimir", 12, 0, 5, true);
-        let second_line = print_game_line("Nami", 1, 1, 28, true);
+        let first_line = print_game_line(false, "Vladimir", 12, 0, 5, true);
+        let second_line = print_game_line(true, "Nami", 1, 1, 28, true);
 
         println!("{}", first_line);
         println!("{}", second_line);
@@ -232,13 +232,12 @@ mod tests {
 
         let summoner = client
             .summoner(SummonerRegion::NA1)
-            .get_by_name("GhostJester")
+            .get_by_name("rems")
             .send()
             .await
             .unwrap();
         let queue_type = Queue::RankedSolo5x5;
 
-        println!("Summoner: {:?}", summoner);
         let game_ids = client
             .matches(MatchRegion::AMERICAS)
             .get_ids(&summoner.puuid)
@@ -247,7 +246,6 @@ mod tests {
             .send()
             .await
             .unwrap();
-        println!("Game ids: {:?}", game_ids);
         let game_ids_count = game_ids.len();
 
         let table_name = env::var("TABLE_NAME").expect("TABLE_NAME env var not set");
@@ -332,28 +330,47 @@ mod tests {
                 .map(|game| (*game).clone().into())
                 .collect::<Vec<GameItem>>(),
         );
-        let game_details_count = game_details.len();
+        game_details.sort_by(|a, b| b.info.game_creation.cmp(&a.info.game_creation));
 
         let game_count = game_details.len();
 
-        let won_games = game_details
+        let user_games = game_details.iter().map(|game| {
+            game.info
+                .participants
+                .iter()
+                .find(|p| {
+                    if game.info.game_id == 4653903057 {
+                        println!("p: {:?}", p);
+                    }
+                    p.summoner_id == summoner.id
+                })
+                .unwrap()
+        });
+        let user_games = user_games.collect::<Vec<_>>();
+        let user_games_no_remake = user_games
             .iter()
-            .filter(|game| {
-                game.info
-                    .participants
-                    .iter()
-                    .find(|p| p.summoner_id == summoner.id)
-                    .unwrap()
-                    .win
+            .filter(|p| !p.game_ended_in_early_surrender);
+
+        let won_games = user_games_no_remake.filter(|p| p.win).count();
+
+        let game_lines = user_games
+            .iter()
+            .map(|p| match p.game_ended_in_early_surrender {
+                true => print_game_line(true, &p.champion_name, 0, 0, 0, false),
+                false => {
+                    print_game_line(false, &p.champion_name, p.kills, p.deaths, p.assists, p.win)
+                }
             })
-            .count();
+            .collect::<String>();
 
         let winrate = won_games as f32 / game_count as f32 * 100.0;
 
         println!("Winrate: {}", winrate);
 
+        println!("{game_lines}");
+
         println!("Test took {}ms", now.elapsed().as_millis());
 
-        assert_eq!(game_ids_count, game_details_count);
+        assert_eq!(game_ids_count, game_count);
     }
 }

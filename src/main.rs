@@ -25,7 +25,10 @@ async fn wrapper_fn(event: Request, state: &AppState) -> Result<Response<Body>, 
     let res = function_handler(event, state).await;
     match res {
         Ok(res) => Ok(res.into_response().await),
-        Err(err) => Ok(err.into_response().await),
+        Err(err) => {
+            tracing::error!("Error: {:?}", err);
+            return Ok(err.into_response().await);
+        }
     }
 }
 async fn function_handler(event: Request, state: &AppState) -> Result<DiscordResponse, AppError> {
