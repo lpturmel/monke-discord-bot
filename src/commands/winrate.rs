@@ -177,7 +177,9 @@ pub async fn run(body: &DiscordPayload, state: &AppState) -> Result<DiscordRespo
 
     let won_games = user_games
         .iter()
-        .filter(|p| p.win || (p.game_ended_in_early_surrender && !p.team_early_surrendered))
+        .filter(|p| {
+            p.win || (p.game_ended_in_early_surrender.unwrap_or(false) && !p.team_early_surrendered)
+        })
         .count();
 
     let winrate = won_games as f32 / game_count as f32 * 100.0;
@@ -206,7 +208,9 @@ fn rayan_kayn_kda_str(games: &Vec<&Participant>) -> String {
         .collect::<Vec<_>>();
     let won_games = kayn_games
         .iter()
-        .filter(|p| p.win || (p.game_ended_in_early_surrender && !p.team_early_surrendered))
+        .filter(|p| {
+            p.win || (p.game_ended_in_early_surrender.unwrap_or(false) && !p.team_early_surrendered)
+        })
         .count();
 
     let winrate = won_games as f32 / kayn_games.len() as f32 * 100.0;

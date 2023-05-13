@@ -72,7 +72,7 @@ pub struct Info {
 #[serde(rename_all = "camelCase")]
 pub struct Participant {
     pub assists: i64,
-    pub game_ended_in_early_surrender: bool,
+    pub game_ended_in_early_surrender: Option<bool>,
     pub team_early_surrendered: bool,
     pub champion_id: i64,
     pub champion_name: String,
