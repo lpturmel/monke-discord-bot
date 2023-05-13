@@ -175,7 +175,10 @@ pub async fn run(body: &DiscordPayload, state: &AppState) -> Result<DiscordRespo
     });
     let user_games = user_games.collect::<std::result::Result<Vec<_>, WinRateError>>()?;
 
-    let won_games = user_games.iter().filter(|p| p.win).count();
+    let won_games = user_games
+        .iter()
+        .filter(|p| p.win || (p.game_ended_in_early_surrender && !p.team_early_surrendered))
+        .count();
 
     let winrate = won_games as f32 / game_count as f32 * 100.0;
 
@@ -201,7 +204,10 @@ fn rayan_kayn_kda_str(games: &Vec<&Participant>) -> String {
         .iter()
         .filter(|p| p.champion_name.to_lowercase() == "kayn")
         .collect::<Vec<_>>();
-    let won_games = kayn_games.iter().filter(|p| p.win).count();
+    let won_games = kayn_games
+        .iter()
+        .filter(|p| p.win || (p.game_ended_in_early_surrender && !p.team_early_surrendered))
+        .count();
 
     let winrate = won_games as f32 / kayn_games.len() as f32 * 100.0;
 
