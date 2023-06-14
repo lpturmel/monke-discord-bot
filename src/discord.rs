@@ -7,12 +7,14 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug)]
 pub enum Command {
     Winrate,
+    Recap,
 }
 
 impl Command {
-    pub fn from_str(s: &str) -> Option<Self> {
+    pub fn parse_from_str(s: &str) -> Option<Self> {
         match s {
             "1101728526060765215" => Some(Command::Winrate),
+            "1117931115672502322" => Some(Command::Recap),
             _ => None,
         }
     }

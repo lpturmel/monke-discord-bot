@@ -1,8 +1,9 @@
+use self::league::GetLeagueDetailsRequestBuilder;
 use self::name::GetByNameRequestBuilder;
+use super::Handle;
 use std::fmt::Display;
 
-use super::Handle;
-
+pub mod league;
 pub mod name;
 
 pub struct SummonerClient {
@@ -20,6 +21,16 @@ impl SummonerClient {
             summoner_name
         );
         GetByNameRequestBuilder::new(self.handle.clone(), url)
+    }
+
+    /// Get league entries in all queues for a given summoner ID
+    pub fn get_league_details(&self, summoner_id: &str) -> GetLeagueDetailsRequestBuilder {
+        let url = format!(
+            "{}/lol/league/v4/entries/by-summoner/{}",
+            self.region.base_url(),
+            summoner_id
+        );
+        GetLeagueDetailsRequestBuilder::new(self.handle.clone(), url)
     }
 }
 pub enum Region {

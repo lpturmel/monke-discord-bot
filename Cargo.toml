@@ -20,4 +20,6 @@ aws-sdk-dynamodb = "0.25.0"
 aws-config = "0.55.0"
 serde_dynamo = { version = "4.0.10", features = ["aws-sdk-dynamodb+0_25"] }
 aws-smithy-http = "0.55.2"
+chrono = "0.4.26"
+chrono-tz = "0.8.2"
 

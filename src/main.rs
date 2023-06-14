@@ -27,7 +27,7 @@ async fn wrapper_fn(event: Request, state: &AppState) -> Result<Response<Body>, 
         Ok(res) => Ok(res.into_response().await),
         Err(err) => {
             tracing::error!("Error: {:?}", err);
-            return Ok(err.into_response().await);
+            Ok(err.into_response().await)
         }
     }
 }
@@ -63,10 +63,11 @@ async fn function_handler(event: Request, state: &AppState) -> Result<DiscordRes
         1 => commands::ping::run(&body).await?,
         2 => {
             let int_data = &body.data.as_ref().ok_or(AppError::BadCommand)?;
-            let command = Command::from_str(&int_data.id).ok_or(AppError::BadCommand)?;
+            let command = Command::parse_from_str(&int_data.id).ok_or(AppError::BadCommand)?;
 
             match command {
                 Command::Winrate => commands::winrate::run(&body, state).await?,
+                Command::Recap => commands::recap::run(&body, state).await?,
             }
         }
         _ => InteractionResponse::new(ResponseType::Pong, "Bad request type"),
