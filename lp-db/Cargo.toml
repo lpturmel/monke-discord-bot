@@ -1,0 +1,14 @@
+[package]
+name = "lp-db"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+aws-sdk-dynamodb = "0.25.0"
+aws-config = "0.55.0"
+serde_dynamo = { version = "4.0.10", features = ["aws-sdk-dynamodb+0_25"] }
+aws-smithy-http = "0.55.2"
+serde = { version = "1.0.160", features = ["derive"] }
+serde_json = "1.0.96"

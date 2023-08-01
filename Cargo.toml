@@ -1,25 +1,8 @@
-[package]
-name = "monke-bot"
-version = "0.1.0"
-edition = "2021"
+[workspace]
 
-[dependencies]
-ed25519-dalek = "1.0.1"
-futures = "0.3.28"
-hex = "0.4.3"
-lambda_http = "0.8.0"
-lambda_runtime = "0.8.0"
-openssl = { version = "0.10.52", features = ["vendored"] }
-reqwest = { version = "0.11.17", features = ["json"] }
-serde = { version = "1.0.160", features = ["derive"] }
-serde_json = "1.0.96"
-tokio = { version = "1", features = ["macros"] }
-tracing = { version = "0.1", features = ["log"] }
-tracing-subscriber = { version = "0.3", default-features = false, features = ["fmt", "ansi"] }
-aws-sdk-dynamodb = "0.25.0"
-aws-config = "0.55.0"
-serde_dynamo = { version = "4.0.10", features = ["aws-sdk-dynamodb+0_25"] }
-aws-smithy-http = "0.55.2"
-chrono = "0.4.26"
-chrono-tz = "0.8.2"
-
+members = [
+    "bot",
+    "riot-sdk",
+    "lp-db",
+    "lp-serv"
+]

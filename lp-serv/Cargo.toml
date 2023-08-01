@@ -1,0 +1,21 @@
+[package]
+name = "lp-serv"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tokio = { version = "1", features = ["macros"] }
+lambda_http = "0.8.0"
+lambda_runtime = "0.8.0"
+aws-config = "0.55.0"
+tracing-subscriber = { version = "0.3", default-features = false, features = ["fmt", "ansi"] }
+tracing = { version = "0.1", features = ["log"] }
+riot-sdk = { path = "../riot-sdk" }
+lp-db = { path = "../lp-db" }
+serde = { version = "1.0.160", features = ["derive"] }
+serde_json = "1.0.96"
+futures = "0.3.28"
+chrono = "0.4.26"
+chrono-tz = "0.8.2"
