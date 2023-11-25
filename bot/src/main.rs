@@ -17,6 +17,7 @@ pub mod error;
 pub type ResponseFuture = Pin<Box<dyn Future<Output = Response<Body>> + Send>>;
 
 pub struct AppState {
+    account_client: riot_sdk::AccountClient,
     league_client: riot_sdk::LeagueClient,
     tft_client: riot_sdk::TftClient,
     db_client: DynamoClient,
@@ -95,6 +96,9 @@ async fn main() -> Result<(), Error> {
     let client = DynamoClient::new(&config);
 
     let state = AppState {
+        account_client: riot_sdk::AccountClient::new(
+            &std::env::var("RIOT_API_KEY").expect("RIOT_API_KEY not set"),
+        ),
         league_client: riot_sdk::LeagueClient::new(
             &std::env::var("RIOT_API_KEY").expect("RIOT_API_KEY not set"),
         ),

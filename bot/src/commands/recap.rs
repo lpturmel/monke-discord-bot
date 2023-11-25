@@ -193,15 +193,35 @@ async fn run_league(
                             Ordering::Equal => format!("**{}**", rank_change),
                         };
                         banner.push_str(&format!(
-                            "\n\n`LP INFO`\n\nstart\t{}\nend\t  {}\nGain {}",
+                            "\n\n`LP DAILY RECAP`\n\nstart\t{}\nend\t  {}\nGain {}",
                             start_rank.formatted_rank(),
                             current_rank.formatted_rank(),
                             rank_change_str
                         ));
                     }
-                    None => banner.push_str(
-                        "\n\n*User was recently tracked, LP info will be available tomorrow*",
-                    ),
+                    None => {
+                        // banner.push_str("\n\n*No evening info, LP info will be available tomorrow*")
+                        let current_rank = PlayerRank::parse_str(
+                            league_details.tier.as_ref().unwrap(),
+                            league_details.rank.as_ref().unwrap(),
+                            league_details.league_points as i32,
+                        );
+
+                        let rank_change = start_rank.points_difference(&current_rank);
+
+                        let rank_change_str = match rank_change.cmp(&0) {
+                            Ordering::Greater => format!("**+{}**", rank_change),
+                            Ordering::Less => format!("**{}**", rank_change),
+                            Ordering::Equal => format!("**{}**", rank_change),
+                        };
+                        banner.push_str(&format!(
+                            "\n\n`LP RECAP as of {}`\n\nstart\t{}\nend\t  {}\nGain {}",
+                            date.format("%A, %B %e, %Y %H:%M:%S"),
+                            start_rank.formatted_rank(),
+                            current_rank.formatted_rank(),
+                            rank_change_str
+                        ));
+                    }
                 }
             }
         }

@@ -4,11 +4,12 @@ use crate::discord::{
 };
 use crate::error::Result;
 use crate::AppState;
+use riot_sdk::account::AccountRegion;
 use riot_sdk::league::summoner::league::league_type_str;
 use riot_sdk::matches::Region as MatchesRegion;
 use riot_sdk::summoner::Region as SummonerRegion;
 use riot_sdk::Queue;
-use std::fmt::Display;
+use std::fmt::{Display, Write};
 use std::str::FromStr;
 
 const WIN: &str = "✅";
@@ -17,8 +18,10 @@ const LOSS: &str = "❌";
 
 #[derive(Debug)]
 pub enum WinRateError {
-    SummonerNotFound,
+    RiotIdNotFound,
     MissingSummonerOption,
+    MissingGameNameOption,
+    MissingTagLineOption,
     MissingGameOption,
     MissingData,
     NoLeagueDetails,
@@ -32,9 +35,11 @@ pub enum WinRateError {
 impl Display for WinRateError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let msg = match self {
-            WinRateError::SummonerNotFound => "Summoner not found",
+            WinRateError::RiotIdNotFound => "Riot ID not found",
             WinRateError::MissingSummonerOption => "Missing required summoner option",
             WinRateError::MissingGameOption => "Missing required game option",
+            WinRateError::MissingGameNameOption => "Missing required game_name option",
+            WinRateError::MissingTagLineOption => "Missing required tag_line option",
             WinRateError::NoLeagueDetails => "No league details found (user not ranked)",
             WinRateError::MissingData => "Missing data (from discord)",
             WinRateError::MissingOptions => "Missing options (from discord)",
@@ -49,9 +54,16 @@ impl Display for WinRateError {
 pub async fn run(body: &DiscordPayload, state: &AppState) -> Result<DiscordResponse> {
     let data = body.data.as_ref().ok_or(WinRateError::MissingData)?;
     let option = data.options.as_ref().ok_or(WinRateError::MissingOptions)?;
-    let summoner_name = option
+    let game_name = option
         .iter()
-        .find(|o| o.name == "summoner")
+        .find(|o| o.name == "game_name")
+        .ok_or(WinRateError::MissingSummonerOption)?
+        .value
+        .as_ref()
+        .ok_or(WinRateError::MissingOptionValue)?;
+    let tag_line = option
+        .iter()
+        .find(|o| o.name == "tag_line")
         .ok_or(WinRateError::MissingSummonerOption)?
         .value
         .as_ref()
@@ -63,20 +75,30 @@ pub async fn run(body: &DiscordPayload, state: &AppState) -> Result<DiscordRespo
         .value
         .as_ref()
         .ok_or(WinRateError::MissingOptionValue)?;
-    let summoner_name = summoner_name.as_str().unwrap();
+
+    let tag_line = tag_line.as_str().unwrap();
+    let game_name = game_name.as_str().unwrap();
     let game_type = GameType::from_str(game_type.as_str().unwrap())?;
 
+    let riot_id_data = state
+        .account_client
+        .account(AccountRegion::AMERICAS)
+        .get_by_riot_id(game_name, tag_line)
+        .send()
+        .await
+        .map_err(|_| WinRateError::RiotIdNotFound)?;
+    let riot_id = format!("{}#{}", riot_id_data.game_name, riot_id_data.tag_line);
     match game_type {
-        GameType::League => run_league(summoner_name, state).await,
-        GameType::Tft => run_tft(summoner_name, state).await,
+        GameType::League => run_league(&riot_id, &riot_id_data.puuid, state).await,
+        GameType::Tft => run_tft(&riot_id, &riot_id_data.puuid, state).await,
     }
 }
 
-async fn run_league(summoner_name: &str, state: &AppState) -> Result<DiscordResponse> {
+async fn run_league(riot_id: &str, puuid: &str, state: &AppState) -> Result<DiscordResponse> {
     let summoner_data = state
         .league_client
         .summoner(SummonerRegion::NA1)
-        .get_by_name(summoner_name)
+        .get_by_puuid(puuid)
         .send()
         .await?;
 
@@ -158,7 +180,7 @@ async fn run_league(summoner_name: &str, state: &AppState) -> Result<DiscordResp
         ResponseType::ChannelMessageWithSource,
         format!(
             "** --- League --- **\n\n**{}** {}\n\n[{}]: {:.2}% in last {} game(s)\n{}",
-            summoner_data.name,
+            riot_id,
             league_banner,
             queue_type.friendly_name(),
             winrate,
@@ -168,11 +190,11 @@ async fn run_league(summoner_name: &str, state: &AppState) -> Result<DiscordResp
     );
     Ok(res)
 }
-async fn run_tft(summoner_name: &str, state: &AppState) -> Result<DiscordResponse> {
+async fn run_tft(riot_id: &str, puuid: &str, state: &AppState) -> Result<DiscordResponse> {
     let summoner_data = state
         .tft_client
         .summoner(SummonerRegion::NA1)
-        .get_by_name(summoner_name)
+        .get_by_puuid(puuid)
         .send()
         .await?;
 
@@ -234,36 +256,34 @@ async fn run_tft(summoner_name: &str, state: &AppState) -> Result<DiscordRespons
         })
         .count();
 
-    let game_lines = game_details
-        .iter()
-        .map(|g| {
-            let p = g
-                .info
-                .participants
-                .iter()
-                .find(|p| p.puuid == summoner_data.puuid)
-                .unwrap();
-            let placement = match p.placement {
-                1 => "🥇".to_string(),
-                2 => "🥈".to_string(),
-                3 => "🥉".to_string(),
-                _ => format!("#{}", p.placement),
-            };
-            format!(
-                "\n{}\t[{}]\n",
-                placement,
-                Queue::from(g.info.queue_id).friendly_name()
-            )
-        })
-        .collect::<String>();
-
+    let game_lines = game_details.iter().fold(String::new(), |mut acc, g| {
+        let p = g
+            .info
+            .participants
+            .iter()
+            .find(|p| p.puuid == summoner_data.puuid)
+            .unwrap();
+        let placement = match p.placement {
+            1 => "🥇".to_string(),
+            2 => "🥈".to_string(),
+            3 => "🥉".to_string(),
+            _ => format!("#{}", p.placement),
+        };
+        let _ = write!(
+            acc,
+            "\n{}\t[{}]\n",
+            placement,
+            Queue::from(g.info.queue_id).friendly_name()
+        );
+        acc
+    });
     let winrate = won_games as f32 / game_count as f32 * 100.0;
 
     let res = InteractionResponse::new(
         ResponseType::ChannelMessageWithSource,
         format!(
             "** --- TFT --- **\n\n**{}** {}\n\n{:.2}% in last {} game(s)\n{}\n\n",
-            summoner_data.name, league_banner, winrate, game_count, game_lines
+            riot_id, league_banner, winrate, game_count, game_lines
         ),
     );
     Ok(res)

@@ -2,12 +2,12 @@ use crate::{Error, Handle, Result};
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
-pub struct GetByNameRequestBuilder {
+pub struct GetByPuuidRequestBuilder {
     request: reqwest::Request,
     handle: std::sync::Arc<Handle>,
 }
 
-impl GetByNameRequestBuilder {
+impl GetByPuuidRequestBuilder {
     pub fn new(handle: std::sync::Arc<Handle>, url: String) -> Self {
         Self {
             handle,

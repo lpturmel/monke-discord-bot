@@ -30,8 +30,13 @@ pub enum Error {
     AwsSdk(String),
     Validation(String),
     LeaguePointsServiceError(lp_db::error::Error),
+    IntegerParseError(std::num::ParseIntError),
 }
-
+impl From<std::num::ParseIntError> for Error {
+    fn from(e: std::num::ParseIntError) -> Self {
+        Error::IntegerParseError(e)
+    }
+}
 impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
@@ -88,6 +93,7 @@ impl Display for Error {
             Error::BadSignature => "Bad signature",
             Error::BadBody => "Bad body",
             Error::BadOption => "Bad option",
+            Error::IntegerParseError(e) => return e.fmt(f),
             Error::LeaguePointsServiceError(e) => return e.fmt(f),
             Error::SerializeError(e) => return e.fmt(f),
             Error::BadCommand => "Bad command",
@@ -117,6 +123,14 @@ impl IntoResponse for Error {
             Error::AwsSdk(_) => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
             Error::Validation(_) => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
             Error::LeaguePointsServiceError(e) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                serde_json::to_string(&InteractionResponse::new(
+                    ResponseType::ChannelMessageWithSource,
+                    e.to_string(),
+                ))
+                .unwrap(),
+            ),
+            Error::IntegerParseError(e) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 serde_json::to_string(&InteractionResponse::new(
                     ResponseType::ChannelMessageWithSource,

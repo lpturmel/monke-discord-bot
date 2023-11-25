@@ -1,3 +1,4 @@
+pub mod account;
 pub mod league;
 pub mod matches;
 pub mod summoner;
@@ -8,6 +9,8 @@ use crate::summoner::Region as SummonerRegion;
 use reqwest::header::HeaderMap;
 use std::fmt::Display;
 use std::sync::Arc;
+
+use self::account::AccountRegion;
 
 pub type Result<T> = core::result::Result<T, Error>;
 
@@ -142,6 +145,38 @@ impl Display for GameType {
 #[derive(Debug)]
 pub struct Handle {
     pub web: reqwest::Client,
+}
+/// Client for interacting with the Riot Account APIs
+pub struct AccountClient {
+    handle: Arc<Handle>,
+}
+
+impl AccountClient {
+    pub fn new(api_key: &str) -> Self {
+        let mut shared_headers = HeaderMap::new();
+        shared_headers.insert(
+            "X-Riot-Token",
+            api_key.parse().expect("Invalid API key format"),
+        );
+        let client = reqwest::Client::builder()
+            .default_headers(shared_headers)
+            .build()
+            .expect("No TLS backend found");
+        Self {
+            handle: Arc::new(Handle { web: client }),
+        }
+    }
+    pub fn account(&self, region: AccountRegion) -> account::AccountClient {
+        account::AccountClient::new(self.handle.clone(), region)
+    }
+}
+
+impl Clone for AccountClient {
+    fn clone(&self) -> Self {
+        Self {
+            handle: self.handle.clone(),
+        }
+    }
 }
 /// Client for interacting with the League of Legends specific Riot APIs
 pub struct LeagueClient {
