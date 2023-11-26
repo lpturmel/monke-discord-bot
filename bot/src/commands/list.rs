@@ -27,7 +27,7 @@ pub async fn run(body: &DiscordPayload, state: &AppState) -> Result<DiscordRespo
                 .send()
                 .await?;
 
-            let mut banner = String::from("** --- TFT --- **\n\nTracked summoners:\n");
+            let mut banner = String::from("** --- TFT --- **\n\nTracked Riot IDs:\n");
 
             for (i, user) in tracked_users.iter().enumerate() {
                 banner.push_str(&format!("{}.\t{}\n", (i + 1), user.summoner_name));
@@ -44,7 +44,7 @@ pub async fn run(body: &DiscordPayload, state: &AppState) -> Result<DiscordRespo
                 .send()
                 .await?;
 
-            let mut banner = String::from("** --- League --- **\n\nTracked summoners:\n");
+            let mut banner = String::from("** --- League --- **\n\nTracked Riot IDs:\n");
 
             for (i, user) in tracked_users.iter().enumerate() {
                 banner.push_str(&format!("{}.\t{}\n", (i + 1), user.summoner_name));
