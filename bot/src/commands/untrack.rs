@@ -6,15 +6,23 @@ use crate::discord::{
 };
 use crate::error::Result;
 use crate::AppState;
+use riot_sdk::account::AccountRegion;
 use riot_sdk::summoner::Region as SummonerRegion;
 
 pub async fn run(body: &DiscordPayload, state: &AppState) -> Result<DiscordResponse> {
     let data = body.data.as_ref().ok_or(WinRateError::MissingData)?;
     let option = data.options.as_ref().ok_or(WinRateError::MissingOptions)?;
-    let summoner_name = option
+    let game_name = option
         .iter()
-        .find(|o| o.name == "summoner")
-        .ok_or(WinRateError::MissingSummonerOption)?
+        .find(|o| o.name == "game_name")
+        .ok_or(WinRateError::MissingGameNameOption)?
+        .value
+        .as_ref()
+        .ok_or(WinRateError::MissingOptionValue)?;
+    let tag_line = option
+        .iter()
+        .find(|o| o.name == "tag_line")
+        .ok_or(WinRateError::MissingTagLineOption)?
         .value
         .as_ref()
         .ok_or(WinRateError::MissingOptionValue)?;
@@ -26,16 +34,25 @@ pub async fn run(body: &DiscordPayload, state: &AppState) -> Result<DiscordRespo
         .value
         .as_ref()
         .ok_or(WinRateError::MissingOptionValue)?;
-    let summoner_name = summoner_name.as_str().unwrap();
+    let tag_line = tag_line.as_str().unwrap();
+    let game_name = game_name.as_str().unwrap();
 
     let game_type = GameType::from_str(game_type.as_str().unwrap())?;
 
+    let riot_id_data = state
+        .account_client
+        .account(AccountRegion::AMERICAS)
+        .get_by_riot_id(game_name, tag_line)
+        .send()
+        .await
+        .map_err(|_| WinRateError::RiotIdNotFound)?;
+    let riot_id = format!("{}#{}", riot_id_data.game_name, riot_id_data.tag_line);
     match game_type {
         GameType::Tft => {
             let summoner_data = state
                 .league_client
                 .summoner(SummonerRegion::NA1)
-                .get_by_name(summoner_name)
+                .get_by_puuid(&riot_id_data.puuid)
                 .send()
                 .await?;
 
@@ -49,7 +66,7 @@ pub async fn run(body: &DiscordPayload, state: &AppState) -> Result<DiscordRespo
 
             let banner = format!(
                 "** --- TFT --- **\n\nTracking successfully removed for **{}**",
-                summoner_data.name
+                riot_id
             );
 
             let res = InteractionResponse::new(ResponseType::ChannelMessageWithSource, banner);
@@ -59,7 +76,7 @@ pub async fn run(body: &DiscordPayload, state: &AppState) -> Result<DiscordRespo
             let summoner_data = state
                 .league_client
                 .summoner(SummonerRegion::NA1)
-                .get_by_name(summoner_name)
+                .get_by_puuid(&riot_id_data.puuid)
                 .send()
                 .await?;
 
@@ -73,7 +90,7 @@ pub async fn run(body: &DiscordPayload, state: &AppState) -> Result<DiscordRespo
 
             let banner = format!(
                 "** --- League --- **\n\nTracking successfully removed for **{}**",
-                summoner_data.name
+                riot_id
             );
 
             let res = InteractionResponse::new(ResponseType::ChannelMessageWithSource, banner);

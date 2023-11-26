@@ -1,12 +1,10 @@
-use std::str::FromStr;
-
+use super::winrate::WinRateError;
 use crate::discord::{
     DiscordPayload, DiscordResponse, GameType, InteractionResponse, ResponseType,
 };
 use crate::error::Result;
 use crate::AppState;
-
-use super::winrate::WinRateError;
+use std::str::FromStr;
 
 pub async fn run(body: &DiscordPayload, state: &AppState) -> Result<DiscordResponse> {
     let data = body.data.as_ref().ok_or(WinRateError::MissingData)?;

@@ -8,6 +8,7 @@ use crate::AppState;
 use chrono::{TimeZone, Utc};
 use chrono_tz::US::Eastern;
 use lp_db::GameType as DbGameType;
+use riot_sdk::account::AccountRegion;
 use riot_sdk::league::summoner::league::league_type_str;
 use riot_sdk::matches::Region as MatchesRegion;
 use riot_sdk::summoner::Region as SummonerRegion;
@@ -19,10 +20,17 @@ const WORKING_TZ: chrono_tz::Tz = Eastern;
 pub async fn run(body: &DiscordPayload, state: &AppState) -> Result<DiscordResponse> {
     let data = body.data.as_ref().ok_or(WinRateError::MissingData)?;
     let option = data.options.as_ref().ok_or(WinRateError::MissingOptions)?;
-    let summoner_name = option
+    let game_name = option
         .iter()
-        .find(|o| o.name == "summoner")
+        .find(|o| o.name == "game_name")
         .ok_or(WinRateError::MissingSummonerOption)?
+        .value
+        .as_ref()
+        .ok_or(WinRateError::MissingOptionValue)?;
+    let tag_line = option
+        .iter()
+        .find(|o| o.name == "tag_line")
+        .ok_or(WinRateError::MissingTagLineOption)?
         .value
         .as_ref()
         .ok_or(WinRateError::MissingOptionValue)?;
@@ -38,18 +46,28 @@ pub async fn run(body: &DiscordPayload, state: &AppState) -> Result<DiscordRespo
         .find(|o| o.name == "yesterday")
         .and_then(|o| o.value.as_ref().map(|v| v.as_bool().unwrap_or(false)));
 
-    let summoner_name = summoner_name.as_str().unwrap();
-
+    let tag_line = tag_line.as_str().unwrap();
+    let game_name = game_name.as_str().unwrap();
     let game_type = GameType::from_str(game_type.as_str().unwrap())?;
 
+    let riot_id_data = state
+        .account_client
+        .account(AccountRegion::AMERICAS)
+        .get_by_riot_id(game_name, tag_line)
+        .send()
+        .await
+        .map_err(|_| WinRateError::RiotIdNotFound)?;
+    let riot_id = format!("{}#{}", riot_id_data.game_name, riot_id_data.tag_line);
+
     match game_type {
-        GameType::League => run_league(summoner_name, yesterday, state).await,
-        GameType::Tft => run_tft(summoner_name, yesterday, state).await,
+        GameType::League => run_league(&riot_id, &riot_id_data.puuid, yesterday, state).await,
+        GameType::Tft => run_tft(&riot_id, &riot_id_data.puuid, yesterday, state).await,
     }
 }
 
 async fn run_league(
-    summoner_name: &str,
+    riot_id: &str,
+    puuid: &str,
     yesterday: Option<bool>,
     state: &AppState,
 ) -> Result<DiscordResponse> {
@@ -61,7 +79,7 @@ async fn run_league(
     let summoner_data = state
         .league_client
         .summoner(SummonerRegion::NA1)
-        .get_by_name(summoner_name)
+        .get_by_puuid(puuid)
         .send()
         .await?;
 
@@ -151,7 +169,7 @@ async fn run_league(
     };
     let mut banner = format!(
         "** --- League ---**\n\n**{}** {}\n\nRecap for **{}**\n\n{}",
-        summoner_data.name,
+        riot_id,
         league_banner,
         date.format("%A, %B %e, %Y"),
         winrate_line,
@@ -240,7 +258,8 @@ async fn run_league(
     Ok(res)
 }
 async fn run_tft(
-    summoner_name: &str,
+    riot_id: &str,
+    puuid: &str,
     yesterday: Option<bool>,
     state: &AppState,
 ) -> Result<DiscordResponse> {
@@ -250,9 +269,9 @@ async fn run_tft(
         _ => now,
     };
     let summoner_data = state
-        .tft_client
+        .league_client
         .summoner(SummonerRegion::NA1)
-        .get_by_name(summoner_name)
+        .get_by_puuid(puuid)
         .send()
         .await?;
 
@@ -339,7 +358,7 @@ async fn run_tft(
     };
     let mut banner = format!(
         "** --- TFT --- **\n\n**{}** {}\n\nRecap for **{}**\n\n{}",
-        summoner_data.name,
+        riot_id,
         league_banner,
         date.format("%A, %B %e, %Y"),
         winrate_line,

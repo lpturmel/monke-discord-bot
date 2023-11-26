@@ -102,7 +102,7 @@ impl Display for Error {
             Error::RiotApiError(e) => return e.fmt(f),
             Error::WinrateCommandError(e) => return e.fmt(f),
             Error::AwsSdk(e) => {
-                println!("AwsSdk error: {}", e);
+                writeln!(f, "AwsSdk error: {}", e)?;
                 "Aws sdk error"
             }
         };

@@ -37,7 +37,7 @@ impl Display for Error {
             Error::SerializeError(e) => return e.fmt(f),
             Error::Validation(e) => e,
             Error::AwsSdk(e) => {
-                println!("AwsSdk error: {}", e);
+                writeln!(f, "AwsSdk error: {}", e)?;
                 "Aws sdk error"
             }
         };

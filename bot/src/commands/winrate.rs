@@ -57,14 +57,14 @@ pub async fn run(body: &DiscordPayload, state: &AppState) -> Result<DiscordRespo
     let game_name = option
         .iter()
         .find(|o| o.name == "game_name")
-        .ok_or(WinRateError::MissingSummonerOption)?
+        .ok_or(WinRateError::MissingGameNameOption)?
         .value
         .as_ref()
         .ok_or(WinRateError::MissingOptionValue)?;
     let tag_line = option
         .iter()
         .find(|o| o.name == "tag_line")
-        .ok_or(WinRateError::MissingSummonerOption)?
+        .ok_or(WinRateError::MissingTagLineOption)?
         .value
         .as_ref()
         .ok_or(WinRateError::MissingOptionValue)?;
